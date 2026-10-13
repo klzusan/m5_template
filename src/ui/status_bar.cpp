@@ -102,10 +102,8 @@ void StatusBar::drawBatteryIcon(M5Canvas &canvas, int x, int y, int level,
   char batStr[16];
   if (isCharging) {
     snprintf(batStr, sizeof(batStr), "CHG");
-    Serial.println("CHG");
   } else {
     snprintf(batStr, sizeof(batStr), "%d%%", level);
-    Serial.println("Not CHG");
   }
   canvas.drawString(batStr, bx - 4, by + 6);
 }
