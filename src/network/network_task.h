@@ -27,12 +27,18 @@ public:
     void start();
     NetworkState getState();
 
+    // メインスレッド(Core 1)から定期的に呼び出して、I2Cバスの競合なしにRTCを更新
+    void checkAndApplyRtcSync();
+
 private:
-    NetworkTaskManager() = default;
+    NetworkTaskManager();
 
     TaskHandle_t taskHandle_ = nullptr;
-    portMUX_TYPE stateMutex_ = portMUX_INITIALIZER_UNLOCKED;
+    SemaphoreHandle_t mutex_ = nullptr;
     NetworkState state_;
+
+    bool pendingRtcSync_ = false;
+    m5::rtc_datetime_t syncedDateTime_{};
 
     static void taskEntry(void* param);
     void runTask();

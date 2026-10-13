@@ -14,6 +14,8 @@ M5Stack Core2 向けに設計された、堅牢で拡張性の高い C++ 開発�
 - **フリッカーフリーな UI アーキテクチャ**:
   - `M5Canvas`（スプライトメモリ）によるオフスクリーン描画。
   - 常時表示ステータスバー（Wi-Fi、現在時刻、バッテリー残量・充電状態）。
+  - **ホーム画面（ランチャー）＆ アプリ切り替え構造**: `AppBase` を継承して `src/app/` 配下に機能を追加可能。
+  - **ホーム復帰ショートカット**: 各アプリ実行中に画面下部 **BtnB を 10秒長押し** すると、リアルタイムカウントダウン通知とともにホーム画面へ安全に復帰。
   - タッチイベント対応ボタンコンポーネント (`TouchButton`)。
 - **電源・省電力管理 (`SystemManager`)**:
   - バッテリー残量・電圧・充電ステータスのモニタリング。
@@ -37,6 +39,10 @@ m5_template/
 │   └── secrets.h           # (Git管理外) 実際の Wi-Fi SSID / パスワード
 ├── src/
 │   ├── main.cpp            # アプリケーションエントリポイント (setup / loop)
+│   ├── app/                # アプリケーション機能・拡張ロジック
+│   │   ├── app_base.h      # アプリ基底クラス (AppBase)
+│   │   ├── calculator/     # 計算機アプリ (CalculatorApp)
+│   │   └── system_info/    # システム情報アプリ (SystemInfoApp)
 │   ├── network/            # バックグラウンド通信タスク (Core 0)
 │   │   ├── network_task.h
 │   │   └── network_task.cpp
@@ -46,7 +52,7 @@ m5_template/
 │   ├── ui/                 # UI制御、ステータスバー、ボタン描画
 │   │   ├── status_bar.h / status_bar.cpp
 │   │   ├── touch_button.h / touch_button.cpp
-│   │   ├── ui_manager.h / ui_manager.cpp
+│   │   └── ui_manager.h / ui_manager.cpp
 │   └── utils/              # ユーティリティ (ロガー等)
 │       └── logger.h
 ├── platformio.ini          # PlatformIO プロジェクト設定
@@ -85,51 +91,111 @@ M5Stack Core2 を PC に USB 接続し、VS Code 下部の PlatformIO ツール�
 
 ---
 
-## 🛠️ 新しい機能の追加手順
+## 🛠️ アプリケーション（機能）の開発・管理
 
-### パターン 1: 新しい UI ボタンや画面コンテンツを追加する
-
-UI の描画とタッチ判定は `src/ui/ui_manager.cpp` で集中管理されています。
-
-#### 手順例：新しいタッチボタンを追加する
-1. **`src/ui/ui_manager.h` にボタンインスタンスを追加:**
-   ```cpp
-   // src/ui/ui_manager.h
-   #include "touch_button.h"
-
-   class UIManager {
-   private:
-       TouchButton btnCustom_; // 追加
-   };
-   ```
-
-2. **`src/ui/ui_manager.cpp` でボタンを配置・初期化:**
-   ```cpp
-   // UIManager::init() 内
-   // 引数: x, y, width, height, ラベル, 背景色, 文字色
-   btnCustom_.init(170, 70, 130, 48, "Action", Theme::ACCENT_BLUE, Theme::TEXT_MAIN);
-   btnCustom_.setCallback([this]() {
-       LOG_I("UI", "Custom button clicked!");
-       lastAction_ = "Custom Action";
-       // ボタン押下時にバイブレーションを鳴らす例
-       M5.Power.setVibration(100);
-       delay(50);
-       M5.Power.setVibration(0);
-   });
-   ```
-
-3. **タッチ更新と描画を追加:**
-   ```cpp
-   // UIManager::update() 内
-   btnCustom_.update();
-
-   // UIManager::drawMainContent() 内
-   btnCustom_.draw(mainCanvas_);
-   ```
+本テンプレートでは、すべての機能が `AppBase`（[`src/app/app_base.h`]）を継承した独立したモジュールとして設計されています。ホーム画面（ランチャー）から各アプリを切り替えて起動できます。
 
 ---
 
-### パターン 2: 外部センサー（I2C / ADC 等）を追加する
+### 1. 新しいアプリを追加する手順
+
+例として「タイマーアプリ（`TimerApp`）」を新しく追加する場合の手順です。
+
+#### Step 1: ディレクトリとクラスの作成
+`src/app/timer/` ディレクトリを作成し、`timer_app.h` と `timer_app.cpp` を作成します。
+
+```cpp
+// src/app/timer/timer_app.h
+#pragma once
+#include "app/app_base.h"
+#include "config.h"
+
+class TimerApp : public AppBase {
+public:
+    TimerApp() = default;
+
+    // アプリ基本情報 (ホーム画面のカードに表示されます)
+    const char* getName() const override { return "Timer"; }
+    const char* getDescription() const override { return "Countdown Timer"; }
+    uint16_t getThemeColor() const override { return Theme::ACCENT_WARN; } // テーマ色
+
+    // ライフサイクルコールバック
+    void onEnter() override { /* 画面開始時の初期化 */ }
+    void onExit() override  { /* 画面離脱時のクリーンアップ */ }
+
+    // 毎フレームの入力更新・描画 (offsetY = StatusBar高さ: 24)
+    void update() override {
+        // M5.Touch やボタン入力処理
+    }
+    void render(M5Canvas& canvas, int offsetY = 24) override {
+        canvas.fillSprite(Theme::BG_DARK);
+        // canvas.drawString(...) 等で描画
+    }
+};
+```
+
+#### Step 2: `UIManager` にアプリを登録
+[`src/ui/ui_manager.h`] と [`src/ui/ui_manager.cpp`] にアプリを追加します。
+
+1. **ヘッダー ([`src/ui/ui_manager.h`])**:
+   ```cpp
+   #include "app/timer/timer_app.h" // インクルード追加
+
+   class UIManager {
+       // ...
+   private:
+       CalculatorApp calcApp_;
+       SystemInfoApp sysInfoApp_;
+       TimerApp timerApp_; // ★ インスタンス変数を追加
+   };
+   ```
+
+2. **実装 ([`src/ui/ui_manager.cpp`])**:
+   `init()` メソッド内の `apps_.push_back(...)` に追加します。
+   ```cpp
+   void UIManager::init() {
+       // ...
+       apps_.clear();
+       apps_.push_back(&calcApp_);
+       apps_.push_back(&sysInfoApp_);
+       apps_.push_back(&timerApp_); // ★ リストに登録
+       // ...
+   }
+   ```
+これだけで自動的にホーム画面のカルーセルに新しいカードが追加され、BtnA / BtnC で選択して起動できるようになります！
+
+---
+
+### 2. アプリを削除する手順
+
+不要になったアプリを取り除く場合は、追加の逆の手順を行います。
+
+1. **`UIManager::init()` からの登録解除 ([`src/ui/ui_manager.cpp`])**:
+   `apps_.push_back(...)` の対象行を削除（またはコメントアウト）します。
+   ```cpp
+   // apps_.push_back(&sysInfoApp_); // 削除したいアプリを除外
+   ```
+2. **`UIManager` からのインスタンス・インクルード削除 ([`src/ui/ui_manager.h`])**:
+   メンバ変数宣言と `#include` 行を削除します。
+3. **不要なソースコードの削除**:
+   `src/app/<削除したいアプリ名>/` ディレクトリを削除します。
+
+---
+
+### 3. アプリの並び順を変更する手順
+
+ホーム画面（カルーセル）で表示されるアプリの並び順は、[`src/ui/ui_manager.cpp`] の `apps_.push_back(...)` の **記述順** で決定されます。
+
+```cpp
+// 例: System Info を最初(デフォルト)に表示したい場合
+apps_.clear();
+apps_.push_back(&sysInfoApp_); // 1番目 (初期選択)
+apps_.push_back(&calcApp_);    // 2番目
+```
+
+---
+
+## 外部センサー（I2C / ADC 等）の追加
 
 センサー読み取りや外部デバイス連携を追加する場合の推奨構成です。
 
@@ -168,7 +234,7 @@ UI の描画とタッチ判定は `src/ui/ui_manager.cpp` で集中管理され�
 
 ---
 
-### パターン 3: バックグラウンド通信タスク（Web API / MQTT）を拡張する
+## バックグラウンド通信タスク（Web API / MQTT）の拡張
 
 Core 0 で動作する `NetworkTaskManager` (`src/network/network_task.cpp`) は、メインループをブロックせずに通信を行うためのタスクです。
 

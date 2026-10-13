@@ -26,6 +26,10 @@ namespace Theme {
     constexpr uint16_t ACCENT_ALERT = 0xE986; // レッド (#E74C3C)
     constexpr uint16_t BTN_DEFAULT  = 0x2967; // 通常ボタン (#2B303A)
     constexpr uint16_t BTN_PRESSED  = 0x420C; // 押下時ボタン (#434A59)
+    constexpr uint16_t KEY_NUM_BG   = 0x2124; // 数字キー背景
+    constexpr uint16_t KEY_FUNC_BG  = 0x39E7; // 機能キー(C, +/-, %)背景
+    constexpr uint16_t KEY_OP_BG    = 0xFA40; // 演算子キー背景 (オレンジ)
+    constexpr uint16_t KEY_OP_PRESS = 0xC260; // 演算子押下時
 }
 
 // ==========================================
@@ -47,6 +51,6 @@ namespace NvsKeys {
 // ==========================================
 // タスク設定 (FreeRTOS)
 // ==========================================
-constexpr uint32_t NETWORK_TASK_STACK_SIZE = 4096;
+constexpr uint32_t NETWORK_TASK_STACK_SIZE = 8192; // WiFi & NTP 用に拡張
 constexpr UBaseType_t NETWORK_TASK_PRIORITY = 1;
 constexpr BaseType_t NETWORK_TASK_CORE = 0; // バックグラウンド通信は Core 0

@@ -16,8 +16,10 @@ void setup() {
   cfg.serial_baudrate = 115200;
   M5.begin(cfg);
 
-  // 2. ロガー初期化
+  // 2. ロガー初期化 & タイムゾーン設定
   Logger::init(115200);
+  setenv("TZ", "JST-9", 1);
+  tzset();
   LOG_I(TAG, "========================================");
   LOG_I(TAG, "  M5Stack Core2 Template Initializing   ");
   LOG_I(TAG, "========================================");
@@ -41,6 +43,7 @@ void loop() {
   // 2. システム・UI状態更新
   SystemManager::instance().update();
   UIManager::instance().update();
+  NetworkTaskManager::instance().checkAndApplyRtcSync();
 
   // 3. 一定フレームレート (約30 FPS) で描画
   uint32_t now = millis();
