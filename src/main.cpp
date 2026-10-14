@@ -1,11 +1,10 @@
-#include <Arduino.h>
-#include <M5Unified.h>
-
 #include "config.h"
 #include "network/network_task.h"
 #include "system/system_manager.h"
 #include "ui/ui_manager.h"
 #include "utils/logger.h"
+#include <Arduino.h>
+#include <M5Unified.h>
 
 static const char *TAG = "Main";
 static uint32_t lastFrameTime = 0;

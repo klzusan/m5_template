@@ -1,4 +1,5 @@
 #include "ui_manager.h"
+#include "config.h"
 #include "network/network_task.h"
 #include "system/system_manager.h"
 #include "utils/logger.h"

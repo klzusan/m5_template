@@ -2,9 +2,7 @@
 #include "app/app_base.h"
 #include "app/calculator/calculator_app.h"
 #include "app/system_info/system_info_app.h"
-#include "config.h"
 #include "status_bar.h"
-#include "touch_button.h"
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <vector>
