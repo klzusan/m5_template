@@ -40,9 +40,9 @@ private:
   int selectedAppIndex_ = 0;
   AppBase *currentApp_ = nullptr;
 
-  // BtnB 10秒長押し監視用
+  // BtnB 3秒長押し監視用
   uint32_t btnBPressStartTime_ = 0;
-  static constexpr uint32_t HOLD_HOME_THRESHOLD_MS = 5000; // 5秒
+  static constexpr uint32_t HOLD_HOME_THRESHOLD_MS = 3000; // 3秒
 
   void drawHomeContent();
   void checkBtnBHomeTrigger();
